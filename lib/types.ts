@@ -4,8 +4,10 @@ export type Question = {
   sourceNumber: number;
   prompt: string;
   options: { key: OptionKey; text: string }[];
+  correctKey: OptionKey;
+  explanation: string;
 };
-export type BankQuestion = Question & {
+export type BankQuestion = Omit<Question, 'correctKey' | 'explanation'> & {
   correctKey: OptionKey;
   explanation: string;
   active: boolean;

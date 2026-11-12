@@ -1,11 +1,12 @@
-type Props = { bankSize: number; excluded: number; busy: boolean; start: () => void };
-export default function Home({ bankSize, excluded, busy, start }: Props) {
-  return <>
-    <section className="hero" aria-labelledby="home-title">
-      <div className="hero-content"><p className="eyebrow"><span /> MỖI LẦN LUYỆN, MỘT BƯỚC TIẾN</p><h1 id="home-title">Hiểu sâu hơn.<br /><em>Tự tin hơn.</em></h1><p className="hero-description">Biến kiến thức Lý – Dược thành sự tự tin.<br />30 câu hỏi ngẫu nhiên, lời giải rõ ràng, và một cơ hội mới sau mỗi lần thử.</p><div className="hero-actions"><button className="button primary" onClick={start} disabled={busy || bankSize < 30}>{busy ? 'Đang tạo đề…' : 'Bắt đầu luyện tập'} <span aria-hidden="true">↗</span></button><span className="hero-hint">Không giới hạn thời gian<br />Học theo nhịp của bạn</span></div><div className="hero-proof"><span className="proof-icon" aria-hidden="true">✓</span> Không đăng ký <span className="divider-dot">·</span> Làm lại không giới hạn</div></div>
-      <aside className="exam-preview"><div className="preview-top"><span>ĐỀ LUYỆN TẬP</span><span className="tag">SẴN SÀNG</span></div><div className="preview-number">30<span>câu hỏi mỗi lượt</span></div><div className="preview-line" /><dl className="preview-stats"><div><dt>Ngân hàng câu hỏi</dt><dd>{bankSize} câu hợp lệ</dd></div><div><dt>Phương thức chọn</dt><dd>Ngẫu nhiên</dd></div><div><dt>Sau khi hoàn thành</dt><dd>Đáp án + giải thích</dd></div></dl><div className="preview-foot"><span aria-hidden="true">✳</span> Một đề mới. Một góc nhìn mới.</div><span className="preview-decoration" aria-hidden="true">u.</span></aside>
-    </section>
-    <section className="how-section" aria-label="Cách luyện tập"><div className="section-label">NHỊP HỌC ĐƠN GIẢN <span>Chỉ cần bắt đầu.</span></div><div className="steps">{[['01', 'Nhận một đề mới', '30 câu không trùng nhau, chọn ngẫu nhiên từ ngân hàng câu hỏi.'], ['02', 'Tập trung từng câu', 'Tự do chuyển câu, thay đổi lựa chọn và làm theo nhịp riêng.'], ['03', 'Hiểu từ lời giải', 'Xem điểm, đối chiếu đáp án rồi tiếp tục với một đề mới.']].map(([number, title, description]) => <article key={number}><span className="step-number">{number}</span><h2>{title}</h2><p>{description}</p></article>)}</div></section>
-    <div className="bank-note"><span className="dot" /><p><strong>Chất lượng câu hỏi được ưu tiên.</strong> {excluded > 0 ? `${excluded} câu lỗi hoặc chưa xác nhận đáp án đang được loại khỏi đề luyện tập.` : 'Mỗi đề gồm 30 câu khác nhau.'} Các lượt có thể gặp lại câu đã làm.</p></div>
-  </>;
+type Props = { bankSize: number; busy: boolean; start: () => void };
+export default function Home({ bankSize, busy, start }: Props) {
+  return <section className="home-simple" aria-labelledby="home-title">
+    <p className="eyebrow">LÝ – DƯỢC</p>
+    <h1 id="home-title">Học một chút,<br /><em>hiểu thêm một chút.</em></h1>
+    <p className="home-simple-copy">Luyện vài câu theo nhịp của bạn. Không giới hạn thời gian.</p>
+    <button className="button primary" onClick={start} disabled={busy || bankSize < 30}>
+      {busy ? 'Đang chuẩn bị…' : 'Bắt đầu luyện'} <span aria-hidden="true">→</span>
+    </button>
+    <p className="home-simple-count">{bankSize ? `${bankSize} câu trong ngân hàng` : 'Đang tải câu hỏi…'} · Mỗi lượt 30 câu ngẫu nhiên</p>
+  </section>;
 }

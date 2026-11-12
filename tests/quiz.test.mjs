@@ -2,17 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { parseQuestions, createSeed, source } from '../scripts/import-questions.mjs';
-import { validateBank, sampleQuestions, publicQuestion, bankVersion, signAttempt, verifyAttempt, gradeQuestions, TOKEN_TTL } from '../lib/quiz-core.mjs';
+import { validateBank, sampleQuestions, publicQuestion, bankVersion, signAttempt, verifyAttempt, signBankVersion, verifyCachedAttempt, gradeQuestions, TOKEN_TTL } from '../lib/quiz-core.mjs';
 
 const markdown = await readFile(source, 'utf8');
 const bank = parseQuestions(markdown);
 const secret = 'test-secret-at-least-thirty-two-characters';
 
-test('parses actual bank, preserves formulas and excludes faulty source question', () => {
+test('parses actual bank, preserves formulas and activates every source question', () => {
   assert.equal(bank.length, 71);
-  assert.equal(bank.filter((question) => question.active).length, 69);
-  assert.equal(bank.find((question) => question.sourceNumber === 62).active, false);
-  assert.equal(bank.find((question) => question.sourceNumber === 23).active, false);
+  assert.equal(bank.filter((question) => question.active).length, 71);
+  assert.equal(bank.find((question) => question.sourceNumber === 62).active, true);
+  assert.equal(bank.find((question) => question.sourceNumber === 23).active, true);
   assert.equal(bank[0].correctKey, 'C');
   assert.ok(bank[3].options[3].text.includes('\\Delta U'));
   assert.ok(bank[70].explanation.includes('Na⁺'));
@@ -58,7 +58,7 @@ test('question response never exposes answer keys or explanation', () => {
     assert.deepEqual(Object.keys(publicData), ['id', 'sourceNumber', 'prompt', 'options']);
   }
 });
-test('signed attempts reject tampering, expiry and bank updates', () => {
+test('legacy signed-attempt validation rejects tampering, expiry and bank updates', () => {
   const ids = sampleQuestions(bank).map((question) => question.id);
   const token = signAttempt(ids, bankVersion(bank), secret, 1000);
   assert.deepEqual(verifyAttempt(token, bank, secret, 2000).questions.map((question) => question.id), ids);
@@ -66,6 +66,21 @@ test('signed attempts reject tampering, expiry and bank updates', () => {
   assert.throws(() => verifyAttempt(token, bank, secret, 1000 + TOKEN_TTL), /hết hạn/);
   assert.throws(() => verifyAttempt(token, bank.slice(1), secret, 2000), /cập nhật/);
   assert.throws(() => verifyAttempt(signAttempt(Array(30).fill(ids[0]), bankVersion(bank), secret), bank, secret), /Đề thi/);
+});
+test('legacy cached-attempt validation checks attempt metadata', () => {
+  const version = bankVersion(bank);
+  const body = { attemptId: 'f02c3efc-6931-401b-8ae7-7d38c977b3ec', startedAt: 1000, completedAt: 2000,
+    version, bankToken: signBankVersion(version, secret), ids: sampleQuestions(bank).map((q) => q.id) };
+  assert.equal(verifyCachedAttempt(body, bank, secret, 2000).questions.length, 30);
+  assert.throws(() => verifyCachedAttempt({ ...body, ids: Array(30).fill(body.ids[0]) }, bank, secret, 2000), /Đề thi/);
+  assert.throws(() => verifyCachedAttempt({ ...body, ids: ['outside', ...body.ids.slice(1)] }, bank, secret, 2000), /khả dụng/);
+  assert.throws(() => verifyCachedAttempt({ ...body, bankToken: 'x' }, bank, secret, 2000), /Chữ ký/);
+  assert.throws(() => verifyCachedAttempt({ ...body, attemptId: 'invalid' }, bank, secret, 2000), /Mã bài/);
+  assert.equal(verifyCachedAttempt({ ...body, completedAt: 1000 + TOKEN_TTL }, bank, secret, 1000 + TOKEN_TTL + 60000).questions.length, 30);
+  assert.equal(verifyCachedAttempt({ ...body, completedAt: 1001 + TOKEN_TTL }, bank, secret, 1001 + TOKEN_TTL).questions.length, 30);
+  assert.throws(() => verifyCachedAttempt({ ...body, completedAt: undefined }, bank, secret, 2000), /Thời gian nộp/);
+  assert.throws(() => verifyCachedAttempt({ ...body, completedAt: 999 }, bank, secret, 2000), /Thời gian nộp/);
+  assert.throws(() => verifyCachedAttempt(body, bank.slice(1), secret, 2000), /cập nhật/);
 });
 test('grades right, wrong, skipped; rejects unknown questions and invalid options', () => {
   const questions = sampleQuestions(bank);

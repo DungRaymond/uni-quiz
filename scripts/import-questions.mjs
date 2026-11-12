@@ -39,7 +39,7 @@ export function parseQuestions(markdown) {
     if (correct.length !== 1) fail('Phải đánh dấu đúng một đáp án.');
     const exclusionReason = block.includes('Câu hỏi lỗi đề thi') ? 'Đề gốc ghép sai nội dung và đáp án; cần duyệt lại.'
       : block.includes('Đáp án tạm theo ghi nhận') ? 'Đáp án tạm thời; cần hỏi lại giảng viên.' : null;
-    return { id, sourceNumber: Number(number), prompt, options, correctKey: correct[0], explanation, active: exclusionReason === null,
+    return { id, sourceNumber: Number(number), prompt, options, correctKey: correct[0], explanation, active: true,
       exclusionReason };
   });
 }
