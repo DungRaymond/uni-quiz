@@ -5,13 +5,14 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import katex from 'katex';
+import { parseQuestions, source } from '../scripts/import-questions.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const bank = JSON.parse(await readFile(path.join(root, 'data/questions.json'), 'utf8'));
+const bank = parseQuestions(await readFile(source, 'utf8'));
 const port = Number(process.env.SMOKE_PORT || 3107);
 const base = `http://127.0.0.1:${port}`;
-const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(port)], {
-  cwd: root, env: { ...process.env, SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '', QUIZ_SIGNING_SECRET: randomBytes(32).toString('hex') },
+const server = spawn(process.execPath, ['--import', './tests/supabase-mock.mjs', 'node_modules/next/dist/bin/next', 'start', '-p', String(port)], {
+  cwd: root, env: { ...process.env, QUIZ_TEST_MOCK: '1', SUPABASE_URL: 'https://quiz-test.invalid', NEXT_PUBLIC_SUPABASE_URL: 'https://quiz-test.invalid', SUPABASE_SERVICE_ROLE_KEY: 'test-only-key', QUIZ_SIGNING_SECRET: randomBytes(32).toString('hex') },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let logs = '';
@@ -48,6 +49,9 @@ try {
   assert.equal(result.status, 200);
   assert.equal(result.data.correct, 30);
   assert.equal(result.data.review.length, 30);
+  const resubmitted = await post('/api/quiz/submit', { token: first.data.token, answers: {} });
+  assert.equal(resubmitted.status, 200);
+  assert.equal(resubmitted.data.correct, 30, 'Retry must return the first saved result, not regrade changed answers');
   const blank = await post('/api/quiz/submit', { token: second.data.token, answers: {} });
   assert.equal(blank.status, 200);
   assert.equal(blank.data.skipped, 30);

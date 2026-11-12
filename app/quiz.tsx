@@ -5,8 +5,8 @@ import RichText from './rich-text';
 import Home from './home';
 import Results from './results';
 
-type Props = { bankSize: number; excluded: number; mode: string; initialError?: string };
-export default function Quiz({ bankSize, excluded, mode, initialError = '' }: Props) {
+type Props = { bankSize: number; excluded: number; initialError?: string };
+export default function Quiz({ bankSize, excluded, initialError = '' }: Props) {
   const [screen, setScreen] = useState<'home' | 'exam' | 'result'>('home');
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [answers, setAnswers] = useState<Record<string, OptionKey>>({});
@@ -55,7 +55,7 @@ export default function Quiz({ bankSize, excluded, mode, initialError = '' }: Pr
   return <>
     <a href="#main" className="skip-link">Đến nội dung chính</a>
     <header className="header container"><a className="brand" href="/" aria-label="Uni, trang chủ"><span className="brand-mark">u<span>.</span></span><span className="brand-name">uni<span>không gian tự học</span></span></a><div className="header-right"><span className="subject-badge"><span className="dot" /> Vật lý – Lý sinh Dược</span><span className="header-caption">Học vững, tiến xa.</span></div></header>
-    <main id="main" className="container"><div className="source-note"><span className="source-label">{mode === 'local' ? 'NGUỒN MARKDOWN' : 'SUPABASE'}</span><span>{mode === 'local' ? 'Đang dùng ngân hàng gốc. Bài làm chưa lưu lên cloud.' : 'Câu hỏi và kết quả bài làm được lưu trên Supabase.'}</span></div>{error && <div className="error-box" role="alert">{error}</div>}<span className="sr-only" role="status">{busy ? 'Đang xử lý, vui lòng chờ.' : ''}</span>
+    <main id="main" className="container"><div className="source-note"><span className="source-label">SUPABASE</span><span>Ngân hàng câu hỏi và kết quả bài nộp được lưu trên Supabase.</span></div>{error && <div className="error-box" role="alert">{error}</div>}<span className="sr-only" role="status">{busy ? 'Đang xử lý, vui lòng chờ.' : ''}</span>
       {screen === 'home' && <Home bankSize={bankSize} excluded={excluded} busy={busy} start={start} />}
       {screen === 'result' && result && <Results result={result} busy={busy} start={start} home={() => { setScreen('home'); setError(''); }} />}
       {screen === 'exam' && question && <>

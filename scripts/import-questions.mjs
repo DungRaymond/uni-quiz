@@ -57,9 +57,7 @@ async function main() {
   const active = questions.filter((question) => question.active).length;
   if (active < 30) throw new Error('Ngân hàng phải có ít nhất 30 câu hợp lệ.');
   if (!process.argv.includes('--check')) {
-    await mkdir(path.join(root, 'data'), { recursive: true });
     await mkdir(path.join(root, 'supabase'), { recursive: true });
-    await writeFile(path.join(root, 'data/questions.json'), JSON.stringify(questions, null, 2) + '\n');
     await writeFile(path.join(root, 'supabase/seed.sql'), createSeed(questions));
   }
   console.log(`${questions.length} câu nguồn; ${active} câu dùng được; ${questions.length - active} câu cần duyệt.`);

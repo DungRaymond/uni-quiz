@@ -12,8 +12,8 @@ export async function POST(request: Request) {
     if (!body || typeof body !== 'object') throw new QuizError('Dữ liệu bài làm không hợp lệ.');
     const attempt = verifyAttempt(body.token, await loadBank(), signingSecret());
     const result = gradeQuestions(attempt.questions, body.answers);
-    await saveResult(attempt.id, result);
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    const saved = await saveResult(attempt.id, result);
+    return NextResponse.json(saved, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof QuizError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('Submit quiz:', error);

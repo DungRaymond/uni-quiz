@@ -1,6 +1,7 @@
 # Uni · Luyện tập Lý – Dược
 
-Next.js App Router + TypeScript + React. CSS thuần, KaTeX hiển thị công thức. Không cần Supabase để chạy thử.
+Next.js App Router + TypeScript + React. CSS thuần, KaTeX hiển thị công thức.
+**Chỉ dùng Supabase:** không còn dữ liệu JSON tạm, ngân hàng bundle hoặc fallback Markdown trong runtime.
 
 ## Chạy local
 
@@ -9,7 +10,9 @@ Yêu cầu Node.js 22.9+ (khuyến nghị Node.js 24 LTS).
 ```powershell
 Set-Location 'F:\uni\webapp'
 npm.cmd ci
-npm.cmd run import:questions
+# Điền .env.local theo .env.example, chạy migration và sync bên dưới trước.
+node scripts/setup-env.mjs
+npm.cmd run check:supabase
 npm.cmd run dev
 ```
 
@@ -29,7 +32,7 @@ Hai câu này được lưu inactive; không tự sửa đáp án nguồn.
 - Tải lại/rời trang mất bài đang làm. Trình duyệt cảnh báo khi rời bài.
 - Token bài làm có chữ ký HMAC, hiệu lực 24 giờ. Không chứa đáp án.
 - API tạo đề không trả đáp án hoặc giải thích. Chấm điểm trên server.
-- Markdown mode không lưu bài làm. Supabase mode lưu snapshot bài nộp, UUID chống ghi trùng khi gửi lại.
+- Supabase lưu snapshot bài nộp; gửi lại cùng token luôn trả kết quả lần nộp đầu tiên, không thay đáp án đã lưu.
 - Chưa có tài khoản hoặc lịch sử cá nhân. Đây là ứng dụng tự học, không phải hệ thống thi chống gian lận.
 
 ## Kiểm tra và sinh dữ liệu
@@ -42,18 +45,23 @@ npm.cmd run typecheck
 npm.cmd run test:smoke
 ```
 
-`npm run import:questions` sinh `data/questions.json` và `supabase/seed.sql`.
+`npm run import:questions` chỉ sinh `supabase/seed.sql` để migration thủ công, không sinh JSON runtime.
 Script báo lỗi nếu thiếu nội dung, giải thích, đáp án, lựa chọn hoặc trùng ID.
-Seed chạy trong transaction, dùng upsert; import lại không nhân đôi và không xóa câu ngoài nguồn.
-ID dựa trên số câu nguồn: không đánh số lại các câu đã import nếu cần giữ định danh lâu dài.
-Build tự sinh lại dữ liệu. Giữ cả thư mục `lý-dược` và `webapp` khi deploy từ repo `F:\uni`.
+`npm run sync:supabase` đọc Markdown và upsert toàn bộ qua RPC trong một transaction, sau đó đối chiếu từng trường.
+Seed và RPC không nhân đôi hoặc xóa câu ngoài nguồn. Không đánh số lại câu đã import.
+Build không đọc Markdown và không cần source ngoài `webapp`. Test parser và sync vẫn cần thư mục `lý-dược`.
+Smoke test dùng mock HTTP trong process test riêng, không đưa mock hoặc ngân hàng vào app production.
 
-## Supabase (khi có thông tin kết nối)
+## Supabase
 
 1. Chạy `F:\uni\webapp\supabase\migrations\001_quiz_schema.sql` trong Supabase SQL Editor.
-2. Chạy `F:\uni\webapp\supabase\seed.sql`.
-3. Tạo `.env.local` theo `.env.example`; điền `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` và `QUIZ_SIGNING_SECRET`.
-4. Khởi động lại Next.js. App tự chuyển sang Supabase khi có `SUPABASE_URL`.
+2. Chạy `F:\uni\webapp\supabase\migrations\002_import_question_bank.sql` để tạo RPC import chỉ dành cho service role.
+3. Điền `.env.local`: `NEXT_PUBLIC_SUPABASE_URL` (hoặc `SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`. Chạy `node scripts/setup-env.mjs` để sinh secret còn thiếu.
+4. Chạy `npm run sync:supabase`, rồi `npm run check:supabase` để đối chiếu dữ liệu và chặn truy cập ẩn danh.
+5. Khởi động lại Next.js. Không có chế độ dữ liệu local.
+
+Migration tạo bảng/RPC cần Supabase SQL Editor hoặc Management API; service role REST key không có quyền chạy DDL.
+Có thể chạy `supabase/seed.sql` thay cho RPC nếu muốn import thủ công. Không cần Uploadcare cho app này.
 
 Bảng `questions` lưu nội dung và lựa chọn; `question_answer_keys` lưu đáp án và lời giải.
 Bảng `quiz_attempts` lưu snapshot câu hỏi, đáp án đã chọn, kết quả và thời gian nộp.
@@ -61,15 +69,15 @@ RLS bật; `anon` và `authenticated` không có quyền truy cập bảng trự
 Chỉ Next.js server dùng service role qua REST API. Không cần dependency Supabase SDK.
 Không đặt khóa bí mật trong biến `NEXT_PUBLIC_*`, mã client hoặc Git.
 Khi Supabase lỗi, app báo lỗi thay vì âm thầm dùng dữ liệu local. Không thông báo nộp thành công nếu lưu thất bại.
-Chưa chạy migration trên Supabase thật vì chưa có thông tin kết nối.
+Kiểm tra hiện tại: REST kết nối được, ba bảng có sẵn nhưng rỗng; RPC import chưa có. Chưa hoàn tất migration/sync thật.
 
 ## Deploy Vercel
 
 1. Đưa toàn bộ `F:\uni` vào Git repository; không commit `.env.local` hoặc `node_modules`.
 2. Import repo trên Vercel, Framework Preset: Next.js, Root Directory: `webapp`.
-3. Bật **Include source files outside of the Root Directory in the Build Step** để script đọc Markdown ở thư mục môn học.
+3. Không cần bật **Include source files outside of the Root Directory in the Build Step**; runtime chỉ đọc Supabase.
 4. Build Command: `npm run build`; Install Command: `npm ci`; Node.js: 24.x.
-5. Thêm `QUIZ_SIGNING_SECRET` vào Environment Variables. Thêm hai biến Supabase nếu đã migrate.
+5. Thêm `QUIZ_SIGNING_SECRET`, `NEXT_PUBLIC_SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` vào Environment Variables.
 6. Deploy. Không cần `vercel.json` hoặc static export; API routes cần Node.js runtime.
 
 Sinh secret bằng:
@@ -79,7 +87,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
 Đặt giá trị đầu ra vào `QUIZ_SIGNING_SECRET` (ít nhất 32 byte). Production từ chối tạo bài nếu thiếu secret.
-Có thể deploy Markdown mode trước; kết quả chưa lưu cloud cho đến khi cấu hình Supabase.
+Chỉ deploy khi đã migrate/import ngân hàng và xác minh quyền truy cập. `.env.local` không tự được gửi lên Vercel.
 Font Google có fallback hệ thống nếu mạng chặn. KaTeX và font toán được bundle trong app.
 
 ## API nội bộ
@@ -89,4 +97,4 @@ Font Google có fallback hệ thống nếu mạng chặn. KaTeX và font toán 
 
 Không có public API đọc toàn bộ đáp án, không có API xem bài người khác.
 Chưa có rate limit phân tán; thêm Vercel Firewall/rate limiting trước khi quảng bá công khai rộng rãi.
-Chưa chống sửa đáp án khi gửi lại token sau lần nộp đầu; snapshot Supabase chỉ giữ lần nộp đầu tiên.
+Gửi lại cùng token trả kết quả đã lưu lần đầu. Không có API sửa bài đã nộp.
